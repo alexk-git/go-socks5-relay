@@ -49,9 +49,9 @@
 
 ##  Настройка конфигурации
 
-### Файл конфигурации (`env.properties`)
+### Файл конфигурации (`.env`)
 
-Создайте файл `env.properties` в корневой директории проекта со следующим содержимым:
+Создайте файл `.env` в корневой директории проекта со следующим содержимым:
 
 ```
 # IP адрес для прослушивания
@@ -77,7 +77,7 @@ password=CHANGE_THIS_STRONG_PASSWORD
 |-----------|----------|--------|
 | 1 | Флаги командной строки | `-port 8080` |
 | 2 | Переменные окружения | `SOCKS5_CONFIG=/path/to/config` |
-| 3 | Файл конфигурации | `env.properties` |
+| 3 | Файл конфигурации | `.env` |
 | 4 | Значения по умолчанию | `port=1080` |
 
 ### Описание параметров
@@ -93,7 +93,7 @@ password=CHANGE_THIS_STRONG_PASSWORD
 
 ```
 # Указать путь к конфигурационному файлу
-export SOCKS5_CONFIG=/etc/my-proxy/env.properties
+export SOCKS5_CONFIG=/etc/my-proxy/.env
 
 # Включить debug режим
 export SOCKS5_DEBUG=1
@@ -138,22 +138,32 @@ git --version
 ```
 
 ### Установка зависимостей
+### Автоматическая генерация конфигурации
 
-Перед первой сборкой необходимо инициализировать модуль и скачать зависимости:
+При первом запуске прокси автоматически создаст файл `.env` с случайными учетными данными.
+Для этого в Makefile добавлены специальные команды:
 
+```bash
+# Сгенерировать .env файл с случайным именем пользователя и паролем
+make generate-env
+
+# Или выполнить полную настройку
+make setup
 ```
-# Инициализация модуля (если go.mod отсутствует)
-go mod init go-socks5-relay
 
-# Скачивание зависимостей
-go mod tidy
+При использовании `make run`, `make run-debug` или `make run-dev` генерация `.env` выполняется автоматически, если файл отсутствует.
+
+Сгенерированные учетные данные выводятся в консоль. Сохраните их для подключения к прокси.
+
+Пример вывода:
+```
+Generated .env with:
+  Username: user_8993ceb4
+  Password: b19c96874703a456091fbba2
+Please save these credentials for connecting to the proxy.
 ```
 
-Или используйте Makefile:
-
-```
-make deps
-```
+Если вы хотите использовать свои учетные данные, просто отредактируйте файл `.env` вручную.
 
 ### Сборка проекта
 
@@ -221,7 +231,7 @@ make run-dev
 [socks5] [I]: Адрес: 0.0.0.0:1080
 [socks5] [I]: Аутентификация: Username/Password
 [socks5] [I]: Пользователь: "proxyuser"
-[socks5] [I]: Конфигурация: env.properties
+[socks5] [I]: Конфигурация: .env
 [socks5] [I]: Уровень логирования: info
 [socks5] [I]: Debug режим: false
 [socks5] [I]: ===========================
@@ -231,7 +241,7 @@ make run-dev
 В другом терминале проверьте работу прокси:
 
 ```
-# Замените username:password на ваши данные из env.properties
+# Замените username:password на ваши данные из .env
 curl --proxy socks5://proxyuser:proxypass@localhost:1080 https://api.ipify.org
 
 # Должен вернуться ваш IP-адрес (хоста, на котором запущен proxy)
@@ -279,7 +289,7 @@ curl --proxy socks5://proxyuser:proxypass@localhost:1080 https://api.ipify.org
 ./build/socks5-proxy -ip 127.0.0.1
 
 # Кастомный конфиг
-./build/socks5-proxy -config /etc/my-proxy/env.properties
+./build/socks5-proxy -config /etc/my-proxy/.env
 
 # Комбинация
 ./build/socks5-proxy -debug -port 1080 -log-level debug
@@ -292,7 +302,7 @@ curl --proxy socks5://proxyuser:proxypass@localhost:1080 https://api.ipify.org
 export SOCKS5_DEBUG=1
 
 # Указать путь к конфигурации
-export SOCKS5_CONFIG=/etc/proxy/env.properties
+export SOCKS5_CONFIG=/etc/proxy/.env
 
 # Установить уровень логирования
 export SOCKS5_LOG_LEVEL=debug
@@ -333,8 +343,8 @@ sudo cp build/socks5-proxy /usr/local/bin/
 sudo chmod +x /usr/local/bin/socks5-proxy
 
 # Скопировать конфигурацию
-sudo cp env.properties /etc/socks5-proxy/
-sudo chmod 600 /etc/socks5-proxy/env.properties
+sudo cp .env /etc/socks5-proxy/
+sudo chmod 600 /etc/socks5-proxy/.env
 
 # Создать пользователя (опционально)
 sudo useradd -r -s /bin/false -M -d /etc/socks5-proxy socks5
@@ -358,7 +368,7 @@ After=network.target
 Type=simple
 User=nobody
 Group=nogroup
-ExecStart=/usr/local/bin/socks5-proxy -config /etc/socks5-proxy/env.properties
+ExecStart=/usr/local/bin/socks5-proxy -config /etc/socks5-proxy/.env
 Restart=on-failure
 RestartSec=10
 LimitNOFILE=65536
@@ -403,20 +413,108 @@ docker run -p 1080:1080 socks5-proxy
 docker run -p 1080:1080 socks5-proxy -debug
 
 # С кастомным конфигом
-docker run -p 1080:1080 -v $(pwd)/.env:/app/env.properties socks5-proxy
+docker run -p 1080:1080 -v $(pwd)/.env:/app/.env socks5-proxy
 
 # В фоновом режиме
 docker run -d -p 1080:1080 --name socks5-proxy socks5-proxy -debug
 ```
 
-### Проверка
+При первом запуске контейнера автоматически генерируется файл `.env` со случайными учетными данными. Для просмотра сгенерированных учетных данных проверьте логи контейнера:
 
+```bash
+docker logs <container_name>
 ```
-curl --proxy socks5://username:password@localhost:1080 https://api.ipify.org
+
+Если необходимо использовать свои учетные данные, смонтируйте свой файл `.env` в контейнер:
+
+```bash
+docker run -p 1080:1080 -v $(pwd)/.env:/app/.env socks5-proxy
 ```
 
----
+### Docker Compose
 
+В проекте присутствует файл `docker-compose.yml` для удобного запуска через Docker Compose.
+
+#### Запуск
+
+```bash
+# Запуск в фоновом режиме
+docker-compose up -d
+
+# Просмотр логов
+docker-compose logs -f
+
+# Остановка
+docker-compose down
+```
+
+#### Работа с `.env` файлом
+
+Конфигурация SOCKS5 прокси хранится в файле `.env`. Проект использует следующую логику:
+
+1. **Автоматическая генерация**: При запуске контейнера через Docker Compose, если файл `config/.env` отсутствует, он будет автоматически сгенерирован на основе шаблона `config/.env.example` (или корневого `.env.example`, если шаблон в config отсутствует).
+
+2. **Использование существующего файла**: Если `config/.env` уже существует, он будет использован без изменений. Это позволяет вам настроить параметры прокси (IP, порт, учётные данные) и сохранить их между перезапусками.
+
+3. **Расположение файла**: По умолчанию `.env` файл находится в директории `config/` на хосте, которая монтируется в контейнер как `/app/config`. Это обеспечивает сохранение конфигурации между перезапусками контейнера.
+
+Для просмотра сгенерированных параметров проверьте логи контейнера:
+```bash
+docker-compose logs socks5-proxy | grep -A2 "Configuration loaded"
+```
+
+**Важно**: Если вы измените шаблон `.env.example`, существующий `.env` файл не обновится автоматически. Для принудительной генерации удалите `config/.env` и перезапустите контейнер.
+
+#### Сохранение `.env` между перезапусками
+
+
+По умолчанию `.env` файл сохраняется в директории `config/` на хосте благодаря настроенному тому `./config:/app/config` в `docker-compose.yml`.
+
+#### Использование своего `.env` файла
+
+Если вы хотите использовать свой файл конфигурации, смонтируйте его в контейнер:
+
+```yaml
+volumes:
+  # Для использования своего .env файла
+  - ./.env:/app/.env:ro
+```
+ 
+Или передайте путь через переменную окружения:
+
+```yaml
+environment:
+  SOCKS5_CONFIG: /app/.env
+```
+
+#### Настройка портов и других параметров
+
+Порт прокси настраивается в файле `config/.env` (ключ `port`). Если файл `config/.env` отсутствует, он будет автоматически сгенерирован из `config/.env.example` при запуске контейнера.
+
+Для автоматического обновления маппинга портов в Docker Compose используйте скрипт `generate-compose-env.sh`, который создаёт файл `.env` в корне проекта с переменной `SOCKS5_PORT`. Этот файл используется docker-compose для подстановки порта в маппинге.
+
+Вы можете запустить генерацию и запуск контейнера одной командой:
+
+```bash
+make docker-up
+```
+
+Вручную:
+
+```bash
+./scripts/generate-compose-env.sh
+docker-compose up
+```
+
+Если вы хотите изменить порт, отредактируйте `config/.env` (или `config/.env.example`, если `config/.env` не существует) и перезапустите контейнер.
+
+Для включения debug режима раскомментируйте переменные окружения:
+
+```yaml
+environment:
+  SOCKS5_DEBUG: "true"
+  SOCKS5_LOG_LEVEL: "debug"
+```
 ##  Структура проекта
 
 ```
@@ -433,7 +531,7 @@ go-socks5-relay/
     proxy/
         server.go               # Основной сервер
         listener.go             # Логирующий listener и conn
- env.properties                   # Пример конфигурации
+ .env                   # Пример конфигурации
  Dockerfile                       # Docker образ
  Makefile                         # Сборка и установка
  go.mod                           # Go модуль
@@ -457,6 +555,8 @@ make clean        # Очистить собранные файлы
 make test         # Запустить тесты
 make install      # Установить в систему как сервис
 make uninstall    # Удалить из системы
+make setup         # Сгенерировать .env файл с случайными учетными данными
+make generate-env  # Только генерация .env файла
 ```
 
 ### Сборка вручную
@@ -501,7 +601,7 @@ sudo ufw status
 
 ### Проблема: "authentication failed"
 
-**Проверьте** логин и пароль в `env.properties`:
+**Проверьте** логин и пароль в `.env`:
 
 ```
 cat .env
@@ -536,7 +636,7 @@ go mod tidy
 ---
 У меня есть проект SOCKS5 прокси на Go со следующей структурой:
 - cmd/socks5-proxy/main.go  точка входа, флаги командной строки
-- internal/config/  конфигурация из файла env.properties
+- internal/config/  конфигурация из файла .env
 - internal/logger/  логгер с уровнями (error/warn/info/debug)
 - internal/proxy/  сервер и логирующий listener
 - Makefile  сборка и установка

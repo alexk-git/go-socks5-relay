@@ -1,29 +1,55 @@
-FROM golang:1.21-alpine AS builder
+# Multi-stage build for SOCKS5 proxy
+# Builder stage
+FROM golang:1.22-alpine AS builder
 
 WORKDIR /app
 
-# Копируем go.mod и go.sum
+# Copy go module files (if they exist)
 COPY go.mod go.sum ./
+
+# Initialize go module if go.mod doesn't exist
+RUN if [ ! -f go.mod ]; then \
+    echo "Initializing Go module..." && \
+    go mod init go-socks5-relay && \
+    go mod tidy; \
+fi
+
+# Download dependencies
 RUN go mod download
 
-# Копируем исходный код
+# Copy source code
 COPY . .
 
-# Собираем бинарник (путь изменился)
+# Build binary
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o socks5-proxy ./cmd/socks5-proxy
 
+# Copy generation scripts
+RUN mkdir -p /app/scripts
+COPY scripts/generate-env.sh /app/scripts/
+COPY scripts/entrypoint.sh /app/scripts/
+RUN chmod +x /app/scripts/generate-env.sh /app/scripts/entrypoint.sh
+
+# Final stage
 FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates
 
-WORKDIR /root/
+WORKDIR /app
 
-# Копируем бинарник из builder
+# Copy binary from builder
 COPY --from=builder /app/socks5-proxy .
-COPY env.properties .
+# Copy scripts
+COPY --from=builder /app/scripts/ ./scripts/
+# Copy configuration example
+COPY config/.env.example .
 
-# Открываем порт
-EXPOSE 5431
+# Create volume for persistent configuration (optional)
+# VOLUME /app/config
 
-# Запускаем (имя бинарника изменилось)
-CMD ["./socks5-proxy"]
+
+
+# Set entrypoint to generate .env and run proxy
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+
+# Default command (can be overridden)
+CMD []

@@ -21,6 +21,20 @@ deps: init
 	go mod verify
 	@echo "Dependencies ready"
 
+.PHONY: generate-env
+generate-env:
+	@echo "Generating config/.env file with random credentials..."
+	@./scripts/generate-env.sh config/.env.example config/.env
+
+.PHONY: generate-compose-env
+generate-compose-env:
+	@echo "Generating .env for docker-compose..."
+	@./scripts/generate-compose-env.sh
+
+.PHONY: setup
+setup: generate-env
+	@echo "Setup complete. .env file ready."
+
 .PHONY: build
 build: deps
 	@echo "Building $(BINARY_NAME)..."
@@ -29,17 +43,17 @@ build: deps
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
 
 .PHONY: run
-run: build
+run: generate-env build
 	@echo "Starting proxy..."
 	$(BUILD_DIR)/$(BINARY_NAME)
 
 .PHONY: run-debug
-run-debug: build
+run-debug: generate-env build
 	@echo "Starting proxy in debug mode..."
 	$(BUILD_DIR)/$(BINARY_NAME) -debug
 
 .PHONY: run-dev
-run-dev: build
+run-dev: generate-env build
 	@echo "Starting proxy in development mode (debug + verbose logs)..."
 	$(BUILD_DIR)/$(BINARY_NAME) -log-level debug
 
@@ -54,6 +68,21 @@ clean:
 test: deps
 	go test -v ./...
 
+.PHONY: docker-up
+docker-up: generate-compose-env
+	@echo "Starting docker-compose..."
+	docker-compose up
+
+.PHONY: docker-down
+docker-down:
+	@echo "Stopping docker-compose..."
+	docker-compose down
+
+.PHONY: docker-build
+docker-build:
+	@echo "Building docker image..."
+	docker-compose build
+
 .PHONY: help
 help:
 	@echo "Available commands:"
@@ -64,6 +93,12 @@ help:
 	@echo "  make clean        - Remove build artifacts and module files"
 	@echo "  make deps         - Download dependencies"
 	@echo "  make test         - Run tests"
+	@echo "  make setup        - Generate .env file with random credentials"
+	@echo "  make generate-env - Generate .env file only"
+	@echo "  make generate-compose-env - Generate .env for docker-compose"
+	@echo "  make docker-up    - Start docker-compose"
+	@echo "  make docker-down  - Stop docker-compose"
+	@echo "  make docker-build - Build docker image"
 	@echo ""
 	@echo "Run binary directly with options:"
 	@echo "  ./build/socks5-proxy -help   # Show all command-line options"
@@ -73,5 +108,4 @@ help:
 	@echo "  ./build/socks5-proxy -log-level debug"
 	@echo "  ./build/socks5-proxy -port 8080"
 	@echo "  ./build/socks5-proxy -config ./custom.properties"
-
 .DEFAULT_GOAL := help
