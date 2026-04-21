@@ -26,15 +26,16 @@ func NewLoggingListener(addr string, logger *logger.FilteredLogger) (*LoggingLis
 	}, nil
 }
 
-// Accept принимает соединение и логирует его
+// Accept принимает соединение, оборачивает его в LoggingConn и логирует
 func (l *LoggingListener) Accept() (net.Conn, error) {
 	conn, err := l.Listener.Accept()
 	if err != nil {
 		return nil, err
 	}
 
-	l.logger.Debugf("Новое соединение от %s", conn.RemoteAddr())
-	return conn, nil
+	lc := NewLoggingConn(conn, l.logger)
+	l.logger.Debugf("Новое соединение от %s", lc.remoteAddr)
+	return lc, nil
 }
 
 // LoggingConn оборачивает net.Conn и логирует закрытие соединения

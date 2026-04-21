@@ -45,6 +45,27 @@
 - **Git** (для скачивания зависимостей)
 - **Docker** (опционально, для контейнеризации)
 
+### Установка Go (Linux, официальный архив)
+
+Актуальную версию и ссылку для скачивания смотрите на [go.dev/dl](https://go.dev/dl/).
+
+```bash
+# Скачать архив
+wget https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
+
+# Распаковать в /usr/local
+sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
+
+# Добавить Go в PATH
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+source ~/.bashrc
+
+# Проверить установку
+go version
+```
+
+> Для ARM-систем (например, Raspberry Pi) используйте архив `linux-arm64.tar.gz` вместо `linux-amd64.tar.gz`.
+
 ---
 
 ##  Настройка конфигурации
@@ -557,6 +578,32 @@ make install      # Установить в систему как сервис
 make uninstall    # Удалить из системы
 make setup         # Сгенерировать .env файл с случайными учетными данными
 make generate-env  # Только генерация .env файла
+```
+
+### Тестирование
+
+```bash
+# Запустить все тесты
+make test
+
+# Или напрямую через go
+go test ./...
+
+# С подробным выводом
+go test -v ./...
+
+# Только конкретный пакет
+go test -v ./internal/config/
+go test -v ./internal/logger/
+go test -v ./internal/proxy/
+
+# Один конкретный тест
+go test -v -run TestConfigValidate ./internal/config/
+go test -v -run TestServerListens ./internal/proxy/
+
+# С отчётом о покрытии
+go test -cover ./...
+go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out
 ```
 
 ### Сборка вручную
