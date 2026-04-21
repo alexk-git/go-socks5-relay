@@ -2,24 +2,9 @@ services:
   socks5-proxy:
     build: .
     container_name: socks5-proxy
-    ports:
-      - "${SOCKS5_PORT:-1080}:${SOCKS5_PORT:-1080}"
+    network_mode: host
     environment:
-      # Переопределение порта (опционально)
       SOCKS5_CONFIG: /app/config/.env
-      # SOCKS5_DEBUG: "true"
-      # SOCKS5_LOG_LEVEL: "debug"
     volumes:
-    #   # Для сохранения сгенерированного .env файла между перезапусками
       - ./config:/app/config
-    #   # Для использования кастомного конфигурационного файла
-    #   - ./custom.properties:/app/custom.properties:ro
-    #   # Для использования своего .env файла (если не хотите автоматическую генерацию)
-    #   - ./.env:/app/.env:ro
     restart: unless-stopped
-    networks:
-      - socks5-network
-
-networks:
-  socks5-network:
-    driver: bridge

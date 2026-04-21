@@ -69,9 +69,10 @@ test: deps
 	go test -v ./...
 
 .PHONY: docker-up
-docker-up: generate-compose-env
+docker-up:
+	@[ -f config/.env ] || ./scripts/generate-env.sh config/.env.example config/.env
 	@echo "Starting docker-compose..."
-	docker-compose up
+	docker compose --env-file config/.env up -d
 
 .PHONY: docker-down
 docker-down:
