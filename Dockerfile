@@ -1,6 +1,6 @@
 # Multi-stage build for SOCKS5 proxy
 # Builder stage
-FROM golang:1.22-alpine AS builder
+FROM docker.io/library/golang:1.22-alpine AS builder
 
 WORKDIR /app
 
@@ -30,7 +30,7 @@ COPY scripts/entrypoint.sh /app/scripts/
 RUN chmod +x /app/scripts/generate-env.sh /app/scripts/entrypoint.sh
 
 # Final stage
-FROM alpine:latest
+FROM docker.io/library/alpine:latest
 
 RUN apk --no-cache add ca-certificates
 
